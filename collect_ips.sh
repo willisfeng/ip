@@ -17,17 +17,21 @@ rm -f "$OUTPUT_DIR"/*.json
 declare -A country_map
 
 while read ip; do
-  # 获取国家代码
-  country=$(curl -s "https://ipinfo.io/${ip}?token=${TOKEN}" | jq -r '.country // "ZZ"')
+  echo "查询IP: $ip"
+  info=$(curl -s "https://ipinfo.io/${ip}?token=${TOKEN}")
+  echo "返回: $info"
+
+  country=$(echo "$info" | jq -r '.country // "ZZ"')
 
   if [[ $country != "ZZ" ]]; then
     country_map[$country]="${country_map[$country]}\"$ip\",\n"
+  else
+    echo "⚠️ 无法识别国家: $ip"
   fi
 done < "$IP_TMP_FILE"
 
 # 保存为 JSON 文件
 for code in "${!country_map[@]}"; do
-  # 去除最后的 , 和换行
   echo -e "[\n${country_map[$code]%??}\n]" > "${OUTPUT_DIR}/${code}.json"
 done
 
