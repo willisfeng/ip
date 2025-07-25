@@ -7,9 +7,6 @@ echo "📥 开始抓取多个 IP 来源..."
 SOURCES=(
   "https://api.uouin.com/cloudflare.html"
   "https://ip.164746.xyz"
-  "https://cf.090227.xyz"
-  "https://cf.vvhan.com/"
-  "https://stock.hostmonit.com/CloudFlareYes"
 )
 
 WORKDIR="$(cd "$(dirname "$0")" && pwd)"
