@@ -46,5 +46,9 @@ done < "$tmp_dir/all_ips.txt"
 sed -i '1s/^/[\n/' ip-json/US.json
 sed -i '$s/,$/\n]/' ip-json/US.json
 
+
+
+
 echo "🎉 IP 已根据国家分类保存至 ip-json 文件夹内。"
 
+echo "// updated at $(date '+%Y-%m-%d %H:%M:%S')" >> "ip-json/$country.json"
