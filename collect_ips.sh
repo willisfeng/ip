@@ -1,45 +1,40 @@
 #!/bin/bash
 
-set -e
-
 echo "📥 开始收集 IP 地址列表..."
 
-# 确保输出目录存在
+# 需要的国家标签
+COUNTRIES=("US" "JP" "HK" "SG" "DE" "CN" "FR" "GB" "IN")
+
 mkdir -p ip-json
 
-# 设置 token
-TOKEN="${IPINFO_TOKEN}"
+> all_ips.txt
+curl -s https://raw.githubusercontent.com/XIU2/CloudflareSpeedTest/master/ip.txt -o cf_ipv4.txt
 
-# Cloudflare IPv4 节点来源
-CF_SOURCE="https://www.cloudflare.com/ips-v4"
-TMP_FILE="all_ips.txt"
+for ip in $(cat cf_ipv4.txt); do
+    echo "$ip" >> all_ips.txt
+done
 
-# 下载全部 IPv4 IP
-curl -s "$CF_SOURCE" -o "$TMP_FILE"
+for country in "${COUNTRIES[@]}"; do
+    > "ip-json/${country}.json"
+done
 
-# 清理旧数据
-rm -f ip-json/*.json
+for ip in $(cat all_ips.txt); do
+    info=$(curl -s https://ipinfo.io/$ip?token=$IPINFO_TOKEN)
+    country=$(echo $info | jq -r .country)
 
-# 声明国家代码列表（可按需扩展）
-COUNTRIES=(US JP HK SG DE CN FR GB IN)
-
-# 遍历 IP，查国家
-for COUNTRY in "${COUNTRIES[@]}"; do
-  echo "🌍 正在处理 $COUNTRY ..."
-  > "ip-json/${COUNTRY}.json"  # 清空原有文件
-
-  while IFS= read -r ip; do
-    info=$(curl -s --max-time 2 "https://ipinfo.io/$ip?token=${TOKEN}")
-    country=$(echo "$info" | jq -r .country)
-
-    if [[ "$country" == "$COUNTRY" ]]; then
-      echo "\"$ip\"" >> "ip-json/${COUNTRY}.json"
+    if [[ " ${COUNTRIES[@]} " =~ " ${country} " ]]; then
+        echo "\"$ip\"," >> ip-json/${country}.json
+        echo "✅ $ip => $country"
+    else
+        echo "⏭️ $ip skipped ($country)"
     fi
-  done < "$TMP_FILE"
+done
 
-  # JSON 格式化
-  jq -s . "ip-json/${COUNTRY}.json" > tmp.json && mv tmp.json "ip-json/${COUNTRY}.json"
-  echo "✅ 写入 ${COUNTRY}.json"
+# 修正每个 JSON 文件格式
+for file in ip-json/*.json; do
+    sed -i '' -e '$ s/,$//' "$file" # macOS sed
+    sed -i '' -e '1s/^/[/' "$file"
+    echo "]" >> "$file"
 done
 
 echo "🎉 IP 收集完成。"
