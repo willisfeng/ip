@@ -1,35 +1,56 @@
-name: Update IP JSON Files
+#!/bin/bash
 
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */12 * * *'  # 每12小时执行一次，可按需调整
+echo "📥 开始抓取多个 IP 来源..."
 
-jobs:
-  update:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🌀 克隆仓库
-        run: git clone https://github.com/Unc1e1u0-2030/ip.git ip
+# IP 源网址列表
+sources=(
+  "https://api.uouin.com/cloudflare.html"
+  "https://ip.164746.xyz"
+  "https://cf.090227.xyz"
+  "https://cf.vvhan.com/"
+  "https://stock.hostmonit.com/CloudFlareYes"
+)
 
-      - name: 🔧 设置 IPINFO_TOKEN 环境变量
-        run: echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
+# 匹配 IPv4 的正则表达式
+ip_regex='([0-9]{1,3}\.){3}[0-9]{1,3}'
 
-      - name: ⚙️ 赋予脚本可执行权限
-        run: chmod +x ./ip/collect_ips.sh
+# 暂存所有 IP 的文件
+all_ips_file="all_ips.txt"
+> "$all_ips_file"
 
-      - name: 📥 执行 IP 分类收集脚本
-        run: ./ip/collect_ips.sh
+# 遍历所有来源
+for url in "${sources[@]}"; do
+  echo "🔗 抓取：$url"
+  content=$(curl -s "$url")
+  if [[ -n "$content" ]]; then
+    echo "$content" | grep -Eo "$ip_regex" >> "$all_ips_file"
+  fi
+done
 
-      - name: 🛠️ 设置 Git 用户信息
-        run: |
-          cd ip
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+# 去重
+sort -u "$all_ips_file" -o "$all_ips_file"
 
-      - name: ✅ 提交变更到 GitHub
-        run: |
-          cd ip
-          git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有要提交的文件"
-          git commit -m "✅ 自动更新 IP JSON 文件 - $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
-          git push https://Unc1e1u0-2030:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
+echo "🌍 开始根据国家分类 IP 地址..."
+
+# 检查 IPINFO_TOKEN 是否设置
+if [[ -z "$IPINFO_TOKEN" ]]; then
+  echo "❌ 缺少 IPINFO_TOKEN，请设置环境变量。"
+  exit 1
+fi
+
+# 创建输出文件夹
+mkdir -p ip-json
+
+# 分类写入
+while read -r ip; do
+  country=$(curl -s "https://ipinfo.io/$ip?token=${IPINFO_TOKEN}" | jq -r '.country // "UNKNOWN"')
+  echo "🔍 IP: $ip => 国家: $country"
+  echo "$ip" >> "ip-json/${country}.json"
+done < "$all_ips_file"
+
+# 将每个国家的 IP 转为 JSON 数组格式
+for file in ip-json/*.json; do
+  jq -Rs 'split("\n") | map(select(length > 0))' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+done
+
+echo "✅ 所有 IP 已根据国家分类保存至 ip-json 文件夹中。"
