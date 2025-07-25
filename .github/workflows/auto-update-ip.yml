@@ -1,34 +1,36 @@
-name: Update Cloudflare IP JSON by Country
+name: update
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小时自动执行一次
+    - cron: "0 8 * * *" # 每天北京时间 16:00 运行
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y curl jq
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y jq curl
 
-    - name: Run collect_ips.sh
-      run: |
-        chmod +x collect_ips.sh
-        ./collect_ips.sh
+      - name: Run collect_ips.sh
+        run: |
+          chmod +x collect_ips.sh
+          echo "📥 正在获取 Cloudflare IPv4 列表..."
+          ./collect_ips.sh
 
-    - name: Commit and Push
-      run: |
-        git config --global user.name github-actions[bot]
-        git config --global user.email github-actions[bot]@users.noreply.github.com
-        git add ip-json/*.json all_ips.txt collect_ips.sh || echo "⚠️ 没有变更可提交"
-        git commit -m "🔄 Update IP JSON by Country" || echo "✅ 没有需要提交的更改"
-        git push
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add ip-json/*.json all_ips.txt collect_ips.sh || echo "⚠️ 没有要提交的变更"
+          git commit -m "🌐 Update IP JSON by Country" || echo "✅ 没有需要提交的变更"
+
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git
+          git push
