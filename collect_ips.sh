@@ -1,11 +1,14 @@
 #!/bin/bash
 
-set -e
+echo "📥 开始抓取多个 IP 来源..."
 
-# === 初始化变量 ===
-OUTPUT_DIR="ip-json"
-IP_FILE="all_ips.txt"
-IP_SOURCES=(
+# 创建工作目录
+WORKDIR="./ip/ip-json"
+mkdir -p "$WORKDIR"
+> all_ips.txt  # 清空旧数据
+
+# 多个 IP 源网站
+URLS=(
   "https://api.uouin.com/cloudflare.html"
   "https://ip.164746.xyz"
   "https://cf.vvhan.com/"
@@ -13,41 +16,42 @@ IP_SOURCES=(
   "https://stock.hostmonit.com/CloudFlareYes"
 )
 
-echo "📥 开始抓取多个 IP 来源..."
-> "$IP_FILE"  # 清空旧文件
-
-for URL in "${IP_SOURCES[@]}"; do
+# 抓取 IP
+for URL in "${URLS[@]}"; do
   echo "🔗 抓取：$URL"
-  curl -s "$URL" | grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' >> "$IP_FILE" || echo "⚠️ 抓取失败：$URL"
+  curl -s "$URL" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' >> all_ips.txt
 done
 
 # 去重
-sort -u "$IP_FILE" -o "$IP_FILE"
+sort -u all_ips.txt -o all_ips.txt
 
 echo "🌍 开始根据国家分类 IP 地址..."
-mkdir -p "$OUTPUT_DIR"
 
-# 判断 jq 是否安装
-if ! command -v jq &> /dev/null; then
-  echo "🔧 安装 jq..."
-  sudo apt-get update && sudo apt-get install -y jq
+# 检查 IPINFO_TOKEN
+if [[ -z "$IPINFO_TOKEN" ]]; then
+  echo "❌ 缺少 IPINFO_TOKEN 环境变量"
+  exit 1
 fi
 
-# 清空原有 json 文件（防止累积）
-rm -f "$OUTPUT_DIR"/*.json
+# 清空旧 JSON
+rm -f "$WORKDIR"/*.json
 
-# 逐个 IP 查询国家
+# 遍历 IP 并归类
 while read -r ip; do
-  country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | jq -r .country)
-  country=${country:-"UNKNOWN"}
+  country=$(curl -s --max-time 10 ipinfo.io/$ip?token=$IPINFO_TOKEN | grep '"country"' | sed -E 's/.*: *"([^"]+)".*/\1/')
+  [[ -z "$country" ]] && country="ZZ"
 
   echo "🔍 IP: $ip => 国家: $country"
-  echo "\"$ip\"" >> "$OUTPUT_DIR/${country}.json"
-done < "$IP_FILE"
+  echo "\"$ip\"," >> "$WORKDIR/${country}.json"
+done < all_ips.txt
 
-# 整理每个 json 文件为合法数组格式
-for file in "$OUTPUT_DIR"/*.json; do
-  jq -Rn '[inputs]' "$file" > tmp.json && mv tmp.json "$file"
+# 美化 JSON 文件
+for file in "$WORKDIR"/*.json; do
+  # 去除最后一个逗号
+  sed -i '$s/,$//' "$file"
+  # 添加中括号包裹
+  sed -i '1s/^/[/' "$file"
+  echo "]" >> "$file"
   echo "✅ 写入 $file"
 done
 
