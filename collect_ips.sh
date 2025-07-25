@@ -1,39 +1,30 @@
 #!/bin/bash
-set -e
 
-echo "📥 正在获取 Cloudflare IPv4 列表..."
+echo "🌐 正在获取 Cloudflare IPv4 列表..."
+curl -s https://www.cloudflare.com/ips-v4 -o cf_ipv4.txt
+
+echo "🔍 扫描所有 IP 国家归属并生成国家分类 JSON..."
+
 mkdir -p ip-json
-rm -f all_ips.txt
+> all_ips.txt
 
-curl -s https://www.cloudflare.com/ips-v4 -o all_ips.txt
+while IFS= read -r ip; do
+    country_code=$(curl -s "http://ip-api.com/json/${ip}?fields=countryCode" | jq -r '.countryCode')
 
-echo "🌍 扫描所有 IP 国家归属并生成国家分类 JSON..."
+    if [[ -z "$country_code" || "$country_code" == "null" || "$country_code" =~ ^[0-9]+$ ]]; then
+        echo "⛔️ 跳过非法国家码: $country_code [$ip]"
+        continue
+    fi
 
-while IFS= read -r ip_range; do
-  # 随机取一个 IP 用于归属地判断
-  random_ip=$(python3 -c "
-import ipaddress, random;
-net = ipaddress.IPv4Network('$ip_range', strict=False);
-print(random.choice(list(net.hosts())))
-" 2>/dev/null)
+    echo "$ip,$country_code" >> all_ips.txt
+    echo "✅ 收录: $ip 属于 $country_code"
+done < cf_ipv4.txt
 
-  if [[ -z "$random_ip" ]]; then
-    continue
-  fi
-
-  country=$(curl -s "https://whois.pconline.com.cn/ipJson.jsp?ip=$random_ip&json=true" | iconv -f gbk -t utf-8 | jq -r '.proCode')
-  [[ "$country" == "null" || "$country" == "" ]] && country="ZZ"
-
-  # 创建一个包含当前网段前5个IP的json数组
-  ip_list=$(python3 -c "
-import ipaddress, json;
-net = ipaddress.IPv4Network('$ip_range', strict=False);
-ips = list(net.hosts())[:5];
-print(json.dumps([str(ip) for ip in ips]))
-")
-
-  echo "$ip_list" > "ip-json/${country}.json"
-  echo "✅ 已写入 ip-json/${country}.json"
-done < all_ips.txt
+for country_code in $(cut -d',' -f2 all_ips.txt | sort | uniq); do
+    ips=$(grep ",${country_code}$" all_ips.txt | cut -d',' -f1)
+    ip_json=$(echo "$ips" | jq -R -s -c 'split("\n") | map(select(length>0))')
+    echo "$ip_json" > "ip-json/${country_code}.json"
+    echo "📝 写入 ip-json/${country_code}.json"
+done
 
 echo "🎉 所有国家优选 IP 已生成于 ip-json 目录"
