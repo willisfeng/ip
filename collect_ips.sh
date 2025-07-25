@@ -1,15 +1,17 @@
 #!/bin/bash
 
+set -e
+
 echo "📥 开始抓取多个 IP 来源..."
 
-# 抓取来源
 SOURCES=(
   "https://api.uouin.com/cloudflare.html"
   "https://ip.164746.xyz"
 )
 
-TMP_IP_FILE="all_ips.txt"
-JSON_DIR="ip-json"
+WORKDIR="$(cd "$(dirname "$0")" && pwd)"
+TMP_IP_FILE="$WORKDIR/all_ips.txt"
+JSON_DIR="$WORKDIR/ip-json"
 mkdir -p "$JSON_DIR"
 > "$TMP_IP_FILE"
 
@@ -21,9 +23,12 @@ done
 
 echo "🌍 开始根据国家分类 IP 地址..."
 
+# 初始化数组
 declare -A ip_by_country
 
+# 遍历IP地址
 while read -r ip; do
+  [[ -z "$ip" ]] && continue
   country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | grep '"country"' | cut -d '"' -f 4)
   [[ -z "$country" ]] && continue
   echo "🔍 IP: $ip => 国家: $country"
