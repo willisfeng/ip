@@ -1,0 +1,16 @@
+[
+  {
+    "ip": "162.159.132.53",
+    "score": 98,
+    "region": "CN",
+    "isp": "China Telecom",
+    "latency_ms": 14.2
+  },
+  {
+    "ip": "162.159.131.76",
+    "score": 96,
+    "region": "CN",
+    "isp": "China Unicom",
+    "latency_ms": 15.5
+  }
+]
