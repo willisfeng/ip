@@ -40,10 +40,11 @@ while read -r ip; do
   echo "{\"ip\": \"$ip\"}," >> "ip-json/$country.json"
 done < all_ips.txt
 
-# 清理 JSON 尾部逗号，封装数组
+# 清理 JSON 尾部逗号，封装为数组（Linux sed 语法）
 for file in ip-json/*.json; do
-  sed -i '' -e '$s/,$//' "$file"
-  sed -i '' -e '1s/^/[/' -e '$a\' -e ']' "$file"
+  sed -i '$s/,$//' "$file"
+  sed -i '1s/^/[/' "$file"
+  sed -i -e '$a]' "$file"
   echo "✅ 写入 $(basename "$file")"
 done
 
