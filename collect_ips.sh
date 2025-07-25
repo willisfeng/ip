@@ -2,42 +2,39 @@
 
 echo "📥 开始抓取多个 IP 来源..."
 
-# IP 源网站
-urls=(
+# 抓取来源
+SOURCES=(
   "https://api.uouin.com/cloudflare.html"
   "https://ip.164746.xyz"
 )
 
-# 清空旧数据
-> all_ips.txt
+TMP_IP_FILE="all_ips.txt"
+JSON_DIR="ip-json"
+mkdir -p "$JSON_DIR"
+> "$TMP_IP_FILE"
 
-# 抓取所有源数据
-for url in "${urls[@]}"; do
+# 抓取并提取IP
+for url in "${SOURCES[@]}"; do
   echo "🔗 抓取：$url"
-  curl -s "$url" | grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' >> all_ips.txt
+  curl -s "$url" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' >> "$TMP_IP_FILE"
 done
-
-# 去重
-sort -u all_ips.txt -o all_ips.txt
 
 echo "🌍 开始根据国家分类 IP 地址..."
 
-mkdir -p ip-json
-rm -f ip-json/*.json
-
-declare -A country_ips
+declare -A ip_by_country
 
 while read -r ip; do
   country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | grep '"country"' | cut -d '"' -f 4)
+  [[ -z "$country" ]] && continue
   echo "🔍 IP: $ip => 国家: $country"
-  [ -n "$country" ] && echo "\"$ip\"," >> "ip-json/${country}.json"
-done < all_ips.txt
+  ip_by_country["$country"]+="$ip"$'\n'
+done < "$TMP_IP_FILE"
 
-# 去除 JSON 尾逗号
-for file in ip-json/*.json; do
-  sed -i '$ s/,$//' "$file"
-  sed -i '1s/^/[\n/' "$file"
-  echo "]" >> "$file"
+# 写入 JSON 文件
+for country in "${!ip_by_country[@]}"; do
+  json_file="${JSON_DIR}/${country}.json"
+  echo "✅ 写入 $json_file"
+  printf '%s' "${ip_by_country[$country]}" | jq -R . | jq -s . > "$json_file"
 done
 
 echo "🎉 IP 收集完成。"
