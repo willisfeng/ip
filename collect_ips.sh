@@ -1,34 +1,45 @@
 #!/bin/bash
-
 echo "📥 开始收集 IP 地址列表..."
 
-# 创建输出目录
+# 检查 Token
+if [ -z "$IPINFO_TOKEN" ]; then
+  echo "❌ 缺少 IPINFO_TOKEN 环境变量"
+  exit 1
+fi
+
+# 创建目录
 mkdir -p ip-json
 > all_ips.txt
 
-# 测试国家列表（可按需添加）
-countries=("US" "JP" "HK" "SG" "DE" "CN" "FR" "GB" "IN")
+# 生成 IPv4 Cloudflare 地址池（简化版本）
+curl -s https://www.cloudflare.com/ips-v4 > cf_ipv4.txt
 
-# 自定义 Cloudflare IPv4 公开地址段（如需更全可扩展）
-ips=(
-  104.16.0.0
-  104.17.0.0
-  104.18.0.0
-  104.19.0.0
-  104.20.0.0
-  104.21.0.0
-)
+# 定义国家列表
+countries=(US JP HK SG DE CN FR GB IN)
 
-# 遍历每个 IP 查询国家
-for ip in "${ips[@]}"; do
-  country=$(curl -s "https://ipinfo.io/${ip}/country?token=${IPINFO_TOKEN}")
-  echo "$ip $country" >> all_ips.txt
+# 初始化国家-IP 映射
+declare -A country_ips
+for country in "${countries[@]}"; do
+  country_ips["$country"]=""
 done
 
-# 按国家分组写入 json 文件
+# 遍历每个 IP，获取其国家信息
+while read -r ip; do
+  ip_check=$(curl -s --connect-timeout 2 "https://ipinfo.io/$ip?token=$IPINFO_TOKEN")
+  country=$(echo "$ip_check" | jq -r '.country // empty')
+  if [[ " ${countries[*]} " == *" $country "* ]]; then
+    country_ips["$country"]+="$ip"$'\n'
+    echo "$ip" >> all_ips.txt
+  fi
+done < cf_ipv4.txt
+
+# 写入每个国家 JSON 文件
 for country in "${countries[@]}"; do
-  grep " $country" all_ips.txt | cut -d' ' -f1 | jq -R . | jq -s . > ip-json/${country}.json
-  echo "✅ 写入 ${country}.json"
+  ips="${country_ips[$country]}"
+  if [ -n "$ips" ]; then
+    echo "$ips" | jq -R -s -c 'split("\n")[:-1]' > "ip-json/$country.json"
+    echo "✅ 写入 $country.json"
+  fi
 done
 
 echo "🎉 IP 收集完成。"
