@@ -1,32 +1,32 @@
-name: Auto Collect and Push IPs
+name: Auto Collect IPs by Country
 
 on:
   schedule:
     - cron: "0 */6 * * *"  # 每6小时执行一次
-  workflow_dispatch:  # 可手动触发
+  workflow_dispatch:      # 支持手动触发
 
 jobs:
-  update-ips:
+  collect:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: ⬇️ 克隆仓库
         uses: actions/checkout@v3
 
-      - name: Set up Git
+      - name: 📦 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl jq
+
+      - name: ⚙️ 配置 Git 用户
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Run collector
-        run: |
-          chmod +x collect_ips.sh
-          ./collect_ips.sh
+      - name: 🧠 运行收集脚本
+        run: bash collect_ips.sh
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
 
-      - name: Commit and Push if changes
+      - name: 📤 提交并推送更改
         run: |
           git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有匹配的文件"
-          git commit -m "🤖 自动更新 IP 列表 $(date +'%F %T')" || echo "✅ 没有需要提交的更改"
-          git push https://github.com/${{ github.repository }}.git HEAD:main
+          git commit -m "✅ 自动更新 IP - $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
+          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
