@@ -1,13 +1,13 @@
 #!/bin/bash
+set -e
 
 echo "📥 开始抓取多个 IP 来源..."
 
-# 创建临时工作目录
-WORKDIR=$(mktemp -d)
-IP_FILE="$WORKDIR/all_ips.txt"
-> "$IP_FILE"
+# 创建临时文件
+TMP_IP_LIST="all_ips.txt"
+> "$TMP_IP_LIST"
 
-# 抓取页面数据
+# 源地址列表
 URLS=(
   "https://api.uouin.com/cloudflare.html"
   "https://ip.164746.xyz"
@@ -16,35 +16,33 @@ URLS=(
   "https://stock.hostmonit.com/CloudFlareYes"
 )
 
-for URL in "${URLS[@]}"; do
-  echo "🔗 抓取：$URL"
-  curl -s "$URL" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' >> "$IP_FILE"
+# 抓取
+for url in "${URLS[@]}"; do
+  echo "🔗 抓取：$url"
+  curl -s "$url" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' >> "$TMP_IP_LIST" || true
 done
 
 # 去重
-sort -u "$IP_FILE" -o "$IP_FILE"
+sort -u "$TMP_IP_LIST" -o "$TMP_IP_LIST"
 
 echo "🌍 开始根据国家分类 IP 地址..."
 
-# 创建输出目录
-OUT_DIR="ip-json"
-mkdir -p "$OUT_DIR"
+mkdir -p ip-json
+declare -A ip_map
 
-# 循环查询IP归属国家并写入对应json
 while read -r ip; do
-  country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | jq -r .country)
-  [[ "$country" == "null" || -z "$country" ]] && continue
-
-  echo "🔍 IP: $ip => 国家: $country"
-
-  JSON_FILE="$OUT_DIR/${country}.json"
-
-  # 如果目标文件已存在，先读取旧数据合并后写入
-  if [[ -f "$JSON_FILE" ]]; then
-    jq -s 'add | unique' <(jq -c . "$JSON_FILE") <(echo "[\"$ip\"]") > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
-  else
-    echo "[\"$ip\"]" > "$JSON_FILE"
+  country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | grep country | cut -d '"' -f4)
+  if [[ -n "$country" ]]; then
+    echo "🔍 IP: $ip => 国家: $country"
+    ip_map["$country"]+="$ip\n"
   fi
-done < "$IP_FILE"
+done < "$TMP_IP_LIST"
+
+# 写入各个国家的文件
+for country in "${!ip_map[@]}"; do
+  file="ip-json/${country}.json"
+  echo -e "${ip_map[$country]}" | sort -u > "$file"
+  echo "✅ 写入 $file"
+done
 
 echo "🎉 所有 IP 收集与分类完成"
