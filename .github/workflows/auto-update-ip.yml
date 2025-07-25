@@ -3,19 +3,20 @@ name: update
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */12 * * *'
+    - cron: '0 */12 * * *'  # 每 12 小时运行一次
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Post Checkout Repository
+      - name: Checkout Repo
         uses: actions/checkout@v3
 
-      - name: 安装依赖
+      - name: 安装依赖项
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq
+          sudo apt-get install -y curl jq prips
 
       - name: 设置 Git 身份
         run: |
