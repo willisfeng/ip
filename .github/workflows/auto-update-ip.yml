@@ -1,39 +1,32 @@
-name: update
+name: Update IPs
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小时自动运行
+    - cron: '0 0 * * *'  # 每天 UTC 0 点运行
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq curl
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jq curl
+      - name: Run collect_ips.sh
+        run: |
+          chmod +x collect_ips.sh
+          ./collect_ips.sh
 
-    - name: Run collect_ips.sh
-      run: |
-        chmod +x collect_ips.sh
-        ./collect_ips.sh
-
-    - name: Commit and Push
-      run: |
-        git config user.name github-actions[bot]
-        git config user.email github-actions[bot]@users.noreply.github.com
-        git add ip-json/*.json all_ips.txt collect_ips.sh
-        git commit -m "🛰️ Update Cloudflare IP JSON by Country" || echo "No changes to commit"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and Push
+        run: |
+          git config --global user.name github-actions[bot]
+          git config --global user.email github-actions[bot]@users.noreply.github.com
+          git add ip-json/*.json all_ips.txt collect_ips.sh
+          git commit -m "🛰 Update IP JSON by Country"
+          git push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
