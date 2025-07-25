@@ -1,36 +1,33 @@
-name: 自动更新 Cloudflare IP 地址池
+name: Auto Collect IPs
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */12 * * *'  # 每12小时执行一次
+    - cron: "0 */6 * * *" # 每6小时运行一次
+  workflow_dispatch:
 
 jobs:
-  update:
+  collect-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ✅ 检出仓库
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: 🧰 安装依赖
-        run: sudo apt update && sudo apt install -y curl jq
-
-      - name: 📥 执行收集脚本
-        env:
-          IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
-        run: bash collect_ips.sh
-
-      - name: 🛠️ 提交更新
+      - name: Set up Git config
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "actions@github.com"
-          git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有匹配的文件"
-          git commit -m "✅ 自动更新 IP 地址池 - $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: 🚀 推送更新
+      - name: Set execute permission
+        run: chmod +x collect_ips.sh
+
+      - name: Run script
+        run: ./collect_ips.sh
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
+
+      - name: Commit and Push
         run: |
-          git remote set-url origin https://${GH_TOKEN}@github.com/${{ github.repository }}
-          git push origin main
+          git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有匹配的文件"
+          git commit -m "✅ 定时更新 IP 地址 $(date '+%F %T')" || echo "✅ 没有需要提交的更改"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
