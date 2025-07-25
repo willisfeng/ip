@@ -27,9 +27,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: ✅ 提交变更到 GitHub
+           - name: 提交更改
         run: |
           cd ip
-          git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有要提交的文件"
-          git commit -m "✅ 自动更新 IP JSON 文件 - $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ip-json/*.json || echo "⚠️ 没有要提交的文件"
+          timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+          git commit -m "✅ 自动更新 IP JSON 文件 - $timestamp" || echo "✅ 没有需要提交的更改"
           git push https://Unc1e1u0-2030:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
