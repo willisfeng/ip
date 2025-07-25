@@ -1,45 +1,35 @@
-#!/bin/bash
+name: Update IP JSON Files
 
-set -e
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'  # 每12小时执行一次，可按需调整
 
-echo "📥 开始抓取多个 IP 来源..."
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🌀 克隆仓库
+        run: git clone https://github.com/Unc1e1u0-2030/ip.git ip
 
-SOURCES=(
-  "https://api.uouin.com/cloudflare.html"
-  "https://ip.164746.xyz"
-)
+      - name: 🔧 设置 IPINFO_TOKEN 环境变量
+        run: echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
 
-WORKDIR="$(cd "$(dirname "$0")" && pwd)"
-TMP_IP_FILE="$WORKDIR/all_ips.txt"
-JSON_DIR="$WORKDIR/ip-json"
-mkdir -p "$JSON_DIR"
-> "$TMP_IP_FILE"
+      - name: ⚙️ 赋予脚本可执行权限
+        run: chmod +x ./ip/collect_ips.sh
 
-# 抓取并提取IP
-for url in "${SOURCES[@]}"; do
-  echo "🔗 抓取：$url"
-  curl -s "$url" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' >> "$TMP_IP_FILE"
-done
+      - name: 📥 执行 IP 分类收集脚本
+        run: ./ip/collect_ips.sh
 
-echo "🌍 开始根据国家分类 IP 地址..."
+      - name: 🛠️ 设置 Git 用户信息
+        run: |
+          cd ip
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-# 初始化数组
-declare -A ip_by_country
-
-# 遍历IP地址
-while read -r ip; do
-  [[ -z "$ip" ]] && continue
-  country=$(curl -s "https://ipinfo.io/${ip}?token=${IPINFO_TOKEN}" | grep '"country"' | cut -d '"' -f 4)
-  [[ -z "$country" ]] && continue
-  echo "🔍 IP: $ip => 国家: $country"
-  ip_by_country["$country"]+="$ip"$'\n'
-done < "$TMP_IP_FILE"
-
-# 写入 JSON 文件
-for country in "${!ip_by_country[@]}"; do
-  json_file="${JSON_DIR}/${country}.json"
-  echo "✅ 写入 $json_file"
-  printf '%s' "${ip_by_country[$country]}" | jq -R . | jq -s . > "$json_file"
-done
-
-echo "🎉 IP 收集完成。"
+      - name: ✅ 提交变更到 GitHub
+        run: |
+          cd ip
+          git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有要提交的文件"
+          git commit -m "✅ 自动更新 IP JSON 文件 - $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
+          git push https://Unc1e1u0-2030:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
