@@ -1,27 +1,34 @@
 #!/bin/bash
-echo "🌐 正在获取 Cloudflare IPv4 列表..."
-IPV4_LIST=$(curl -s https://www.cloudflare.com/ips-v4)
 
-echo "🔍 扫描所有 IP 国家归属并生成国家分类 JSON..."
-mkdir -p ip-json
-> all_ips.txt
+CF_IP_SOURCE="https://www.cloudflare.com/ips-v4"
+IP_TMP_FILE="all_ips.txt"
+OUTPUT_DIR="ip-json"
+TOKEN="${IPINFO_TOKEN}"
 
-for ip in $IPV4_LIST; do
-  echo "$ip" >> all_ips.txt
-  COUNTRY=$(curl -s "https://api.ip.sb/geoip/${ip}" | jq -r '.country_code' || echo "null")
+mkdir -p "$OUTPUT_DIR"
+curl -s "$CF_IP_SOURCE" -o "$IP_TMP_FILE"
 
-  if [[ "$COUNTRY" == "null" || -z "$COUNTRY" ]]; then
-    echo "⚠️ 跳过无法识别国家: null [$ip]"
-    continue
+echo "🌍 正在按国家整理 IP..."
+
+# 清理旧数据
+rm -f "$OUTPUT_DIR"/*.json
+
+# 创建临时映射
+declare -A country_map
+
+while read ip; do
+  # 获取国家代码
+  country=$(curl -s "https://ipinfo.io/${ip}?token=${TOKEN}" | jq -r '.country // "ZZ"')
+
+  if [[ $country != "ZZ" ]]; then
+    country_map[$country]="${country_map[$country]}\"$ip\",\n"
   fi
+done < "$IP_TMP_FILE"
 
-  echo "✅ $ip 属于国家代码: $COUNTRY"
-  FILE="ip-json/${COUNTRY}.json"
-  if [[ -f "$FILE" ]]; then
-    jq -c ". + [\"$ip\"]" "$FILE" > tmp.json && mv tmp.json "$FILE"
-  else
-    echo "[\"$ip\"]" > "$FILE"
-  fi
+# 保存为 JSON 文件
+for code in "${!country_map[@]}"; do
+  # 去除最后的 , 和换行
+  echo -e "[\n${country_map[$code]%??}\n]" > "${OUTPUT_DIR}/${code}.json"
 done
 
-echo "✅ 所有国家优选 IP 已生成于 ip-json 目录"
+echo "✅ 分类完成，已保存至 $OUTPUT_DIR 目录。"
