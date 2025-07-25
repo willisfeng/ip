@@ -1,38 +1,26 @@
 #!/bin/bash
+echo "🌐 正在获取 Cloudflare IPv4 列表..."
+CF_IPS=$(curl -s https://www.cloudflare.com/ips-v4)
 
-CF_IP_SOURCE="https://www.cloudflare.com/ips-v4"
-IP_TMP_FILE="all_ips.txt"
-OUTPUT_DIR="ip-json"
-TOKEN="${IPINFO_TOKEN}"
+echo "🔍 扫描所有 IP 国家归属并生成国家分类 JSON..."
+mkdir -p ip-json
+> all_ips.txt
 
-mkdir -p "$OUTPUT_DIR"
-curl -s "$CF_IP_SOURCE" -o "$IP_TMP_FILE"
+for ip in $CF_IPS; do
+  echo "$ip" >> all_ips.txt
+  while IFS= read -r address; do
+    ip_addr=$(echo "$address" | cut -d '/' -f 1)
 
-echo "🌍 正在按国家整理 IP..."
+    result=$(curl -s "https://ipinfo.io/${ip_addr}/json?token=${IPINFO_TOKEN}")
+    country=$(echo "$result" | jq -r '.country // empty')
 
-# 清理旧数据
-rm -f "$OUTPUT_DIR"/*.json
-
-# 创建临时映射
-declare -A country_map
-
-while read ip; do
-  echo "查询IP: $ip"
-  info=$(curl -s "https://ipinfo.io/${ip}?token=${TOKEN}")
-  echo "返回: $info"
-
-  country=$(echo "$info" | jq -r '.country // "ZZ"')
-
-  if [[ $country != "ZZ" ]]; then
-    country_map[$country]="${country_map[$country]}\"$ip\",\n"
-  else
-    echo "⚠️ 无法识别国家: $ip"
-  fi
-done < "$IP_TMP_FILE"
-
-# 保存为 JSON 文件
-for code in "${!country_map[@]}"; do
-  echo -e "[\n${country_map[$code]%??}\n]" > "${OUTPUT_DIR}/${code}.json"
+    if [[ -n "$country" ]]; then
+      echo "{\"ip\": \"${ip_addr}\"}" >> "ip-json/${country}.json"
+      echo "✅ 归类成功国家: ${country} IP: ${ip_addr}"
+    else
+      echo "❌ 无法识别国家: $ip"
+    fi
+  done < <(prips "$ip")
 done
 
-echo "✅ 分类完成，已保存至 $OUTPUT_DIR 目录。"
+echo "📦 所有国家优选 IP 已生成于 ip-json 目录"
