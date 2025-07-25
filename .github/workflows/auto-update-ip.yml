@@ -9,33 +9,33 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: 月🔄 克隆他人的仓库
+      - name: 🌀 克隆仓库
         run: git clone https://github.com/Unc1e1u0-2030/ip.git ip
 
-      - name: 设置IPINFO环境变量
+      - name: 设置 IPINFO_TOKEN 环境变量
         run: echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
 
-      - name: 让脚本可执行
+      - name: 赋予执行权限
         run: chmod +x ./ip/collect_ips.sh
 
-      - name: 执行IP分类收集脚本
+      - name: 执行收集脚本
         run: ./ip/collect_ips.sh
 
-      - name: 🧪 显示收集结果文件列表
-        run: ls -l ip/ip-json/
+      - name: 显示生成的文件
+        run: ls -lh ip/ip-json/
 
-      - name: 🧪 显示 US.json 内容（用于调试）
+      - name: 显示 US.json 内容
         run: cat ip/ip-json/US.json || echo "⚠️ 无 US.json 文件"
 
-      - name: 设置 Git 用户信息
+      - name: 设置 Git 身份信息
         working-directory: ip
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: 提交更改
+      - name: 提交并推送变更
         working-directory: ip
         run: |
           git add ip-json/*.json || echo "⚠️ 没有要提交的文件"
-          git diff --cached --quiet || git commit -m "✅ 自动更新 IP JSON 文件 - $(date '+%Y-%m-%d %H:%M:%S')"
+          git diff --cached --quiet || git commit -m "✅ 自动更新 IP JSON 文件 - $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')"
           git push https://Unc1e1u0-2030:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
