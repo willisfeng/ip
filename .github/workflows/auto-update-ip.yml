@@ -1,34 +1,29 @@
-name: Update IP JSON by Country
+name: 🌐 自动采集 Cloudflare 优选 IP
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: '0 */6 * * *'  # 每6小时执行一次
   workflow_dispatch:
 
 jobs:
-  update:
+  update-ips:
     runs-on: ubuntu-latest
     steps:
-      - name: 🧹 清理旧目录
-        run: rm -rf ip && mkdir ip
+      - name: 🧾 克隆仓库
+        uses: actions/checkout@v3
 
-      - name: 🌀 克隆仓库
-        run: |
-          git clone https://github.com/Unc1e1u0-2030/ip.git ip
-          cd ip
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: 🛠️ 安装依赖
+        run: sudo apt-get install -y curl
 
-      - name: 📥 执行收集脚本
+      - name: 📥 执行 IP 采集脚本
+        run: bash collect_ips.sh
         env:
           IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
-        run: |
-          chmod +x ./ip/collect_ips.sh
-          ./ip/collect_ips.sh
 
-      - name: 📦 提交更改
+      - name: 🧾 提交更新
         run: |
-          cd ip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ip-json/*.json 2>/dev/null || echo "⚠️ 没有匹配的文件"
-          git commit -m "✅ 自动更新 IP JSON $(date '+%Y-%m-%d %H:%M:%S')" || echo "✅ 没有需要提交的更改"
-          git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
+          git commit -m "✅ 自动更新优选 IP - $(date '+%F %T')" || echo "✅ 没有需要提交的更改"
+          git push
