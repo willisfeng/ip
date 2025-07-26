@@ -12,13 +12,18 @@ jobs:
       - name: 🌀 克隆仓库
         run: git clone https://github.com/Unc1e1u0-2030/ip.git ip
 
-      - name: 设置 IPINFO_TOKEN 环境变量
-        run: echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
+      - name: 设置环境变量 IPINFO_TOKEN 和 GH_TOKEN
+        run: |
+          echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
+          echo "GH_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
+
+      - name: 安装 ping 工具
+        run: sudo apt-get update && sudo apt-get install -y iputils-ping
 
       - name: 赋予执行权限
         run: chmod +x ./ip/collect_ips.sh
 
-      - name: 执行收集脚本
+      - name: 执行收集脚本（含测速与 fallback）
         run: ./ip/collect_ips.sh
 
       - name: 显示生成的文件
