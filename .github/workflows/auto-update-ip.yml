@@ -4,18 +4,13 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 */12 * * *'  # 每12小时执行一次，可按需调整
+  workflow_dispatch: # 允许手动触发
+  push: # 允许提交触发
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: 🌀 克隆仓库
-        run: git clone https://github.com/Unc1e1u0-2030/ip.git ip
-
-      - name: 设置环境变量 IPINFO_TOKEN 和 GH_TOKEN
-        run: |
-          echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> $GITHUB_ENV
-          echo "GH_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
 
       - name: 安装 ping 工具
         run: sudo apt-get update && sudo apt-get install -y iputils-ping
@@ -24,7 +19,7 @@ jobs:
         run: chmod +x ./ip/collect_ips.sh
 
       - name: 执行收集脚本（含测速与 fallback）
-        run: ./ip/collect_ips.sh
+        run: ${{ github.workspace }}/ip/collect_ips.sh
 
       - name: 显示生成的文件
         run: ls -lh ip/ip-json/
@@ -36,11 +31,15 @@ jobs:
         working-directory: ip
         run: |
           git config --global user.email "tianshideyou@proton.me"
-          git config --global user.name "tianshipapa"
-
-      - name: 提交并推送变更
-        working-directory: ip
+          git config --global user.name "tianshipapa"    
+      - name: Commit and push changes
         run: |
-          git add ip-json/*.json
-          git diff --cached --quiet || git commit -m "✅ 自动更新 IP JSON 文件 - $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')"
-          git push
+          git config --global user.email "tianshideyou@proton.me"
+          git config --global user.name "tianshipapa"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add ip-json/*.json
+            git commit -m "Automatic update"
+            git push
+          else
+            echo "No changes detected, skipping commit."
+          fi
