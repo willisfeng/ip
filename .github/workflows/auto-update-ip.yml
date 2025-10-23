@@ -8,6 +8,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
+    - name: 赋予执行权限
+    run: ls&&pwd
 
       - name: 安装 ping 工具
         run: sudo apt-get update && sudo apt-get install -y iputils-ping
