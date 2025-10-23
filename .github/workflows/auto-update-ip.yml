@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🌀 克隆仓库
-        run: git clone https://github.com/willisfeng/ip/ip.git ip
+        run: git clone https://github.com/willisfeng/ip.git ip
 
       - name: 设置环境变量 IPINFO_TOKEN 和 GH_TOKEN
         run: |
