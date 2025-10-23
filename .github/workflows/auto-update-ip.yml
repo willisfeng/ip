@@ -30,7 +30,7 @@ jobs:
         run: ls -lh ip/ip-json/
 
       - name: 显示 US.json 内容
-        run: cat ip/ip-json/US.json || echo "⚠️ 无 US.json 文件"
+        run: cat ip/ip-json/US.json
 
       - name: 设置 Git 身份信息
         working-directory: ip
@@ -41,6 +41,6 @@ jobs:
       - name: 提交并推送变更
         working-directory: ip
         run: |
-          git add ip-json/*.json || echo "⚠️ 没有要提交的文件"
+          git add ip-json/*.json 
           git diff --cached --quiet || git commit -m "✅ 自动更新 IP JSON 文件 - $(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')"
           git push https://Unc1e1u0-2030:${{ secrets.GH_TOKEN }}@github.com/Unc1e1u0-2030/ip.git HEAD:main
