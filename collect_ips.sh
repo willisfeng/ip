@@ -41,7 +41,7 @@ while IFS= read -r ip; do
   echo "🔍 IP: $ip => 国家: $country"
 
   # 保留前100个IP用于测速
-  if [[ $counter -lt 100 ]]; then
+  if [[ $counter -lt 999 ]]; then
     latency=$(ping -c 1 -W 1 "$ip" | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1)
     latency=${latency:-9999}
     country_ips["$country"]+="$latency $ip"$'\n'
