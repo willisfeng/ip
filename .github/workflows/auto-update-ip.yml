@@ -13,19 +13,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y iputils-ping
 
       - name: 赋予执行权限
-        run: chmod +x ./ip/collect_ips.sh
+        run: chmod +x ${{ github.workspace }}/collect_ips.sh
 
       - name: 执行收集脚本（含测速与 fallback）
-        run: ${{ github.workspace }}/ip/collect_ips.sh
+        run: ${{ github.workspace }}/collect_ips.sh
 
       - name: 显示生成的文件
         run: ls -lh ip/ip-json/
 
       - name: 显示 US.json 内容
-        run: cat ip/ip-json/US.json
+        run: cat ${{ github.workspace }}/ip-json/US.json
 
       - name: 设置 Git 身份信息
-        working-directory: ip
         run: |
           git config --global user.email "tianshideyou@proton.me"
           git config --global user.name "tianshipapa"    
