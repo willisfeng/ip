@@ -24,13 +24,9 @@ jobs:
       - name: 显示生成的文件
         run: ls -lh ip-json/
 
-      - name: 显示 DE.json 内容
-        run: cat ip-json/DE.json
+      - name: 显示 US.json 内容
+        run: cat ip-json/US.json
 
-      - name: 设置 Git 身份信息
-        run: |
-          git config --global user.email "tianshideyou@proton.me"
-          git config --global user.name "tianshipapa"    
       - name: Commit and push changes
         run: |
           git config --global user.email "tianshideyou@proton.me"
